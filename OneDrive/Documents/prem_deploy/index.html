@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wind Detection App</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .container { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 32px; max-width: 700px; width: 100%; }
+    h1 { text-align: center; color: #1a202c; margin-bottom: 6px; font-size: 26px; }
+    .subtitle { text-align: center; color: #718096; margin-bottom: 28px; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 13px; font-weight: 600; color: #4a5568; }
+    .hint { font-size: 11px; color: #a0aec0; }
+    input { padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 14px; color: #2d3748; transition: border 0.2s; }
+    input:focus { outline: none; border-color: #4299e1; }
+    button { width: 100%; margin-top: 24px; padding: 14px; background: #4299e1; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #3182ce; }
+    button:disabled { background: #a0aec0; cursor: not-allowed; }
+    .result { margin-top: 24px; padding: 20px; border-radius: 10px; text-align: center; display: none; background: #ebf8ff; border: 1.5px solid #bee3f8; }
+    .result.show { display: block; }
+    .result.error { background: #fff5f5; border: 1.5px solid #fed7d7; }
+    .result-text { font-size: 20px; color: #2b6cb0; font-weight: 600; }
+    .result.error .result-text { color: #c53030; font-size: 15px; }
+    .loader { display: none; text-align: center; margin-top: 12px; color: #718096; font-size: 14px; }
+    .loader.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌬️ Wind Detection</h1>
+    <p class="subtitle">Enter weather parameters to predict Max Temperature</p>
+
+    <div class="grid">
+      <div class="field">
+        <label>STA</label>
+        <input type="number" id="STA" placeholder="e.g. 10001">
+        <span class="hint">Station ID</span>
+      </div>
+      <div class="field">
+        <label>Precip</label>
+        <input type="number" step="0.01" id="Precip" placeholder="e.g. 0.12">
+        <span class="hint">Precipitation</span>
+      </div>
+      <div class="field">
+        <label>MinTemp</label>
+        <input type="number" step="0.1" id="MinTemp" placeholder="e.g. 18.5">
+        <span class="hint">Minimum Temperature</span>
+      </div>
+      <div class="field">
+        <label>MeanTemp</label>
+        <input type="number" step="0.1" id="MeanTemp" placeholder="e.g. 26.0">
+        <span class="hint">Mean Temperature</span>
+      </div>
+      <div class="field">
+        <label>Snowfall</label>
+        <input type="number" step="0.01" id="Snowfall" placeholder="e.g. 0.0">
+        <span class="hint">Snowfall amount</span>
+      </div>
+      <div class="field">
+        <label>YR</label>
+        <input type="number" id="YR" placeholder="e.g. 2024">
+        <span class="hint">Year</span>
+      </div>
+      <div class="field">
+        <label>MO</label>
+        <input type="number" id="MO" placeholder="e.g. 6" min="1" max="12">
+        <span class="hint">Month (1–12)</span>
+      </div>
+      <div class="field">
+        <label>DA</label>
+        <input type="number" id="DA" placeholder="e.g. 15" min="1" max="31">
+        <span class="hint">Day (1–31)</span>
+      </div>
+      <div class="field">
+        <label>PRCP</label>
+        <input type="number" step="0.01" id="PRCP" placeholder="e.g. 0.05">
+        <span class="hint">Precipitation (PRCP)</span>
+      </div>
+      <div class="field">
+        <label>MAX</label>
+        <input type="number" step="0.1" id="MAX" placeholder="e.g. 36.0">
+        <span class="hint">Max value</span>
+      </div>
+      <div class="field">
+        <label>MIN</label>
+        <input type="number" step="0.1" id="MIN" placeholder="e.g. 17.0">
+        <span class="hint">Min value</span>
+      </div>
+      <div class="field">
+        <label>MEA</label>
+        <input type="number" step="0.1" id="MEA" placeholder="e.g. 26.5">
+        <span class="hint">Mean value</span>
+      </div>
+      <div class="field">
+        <label>SNF</label>
+        <input type="number" step="0.01" id="SNF" placeholder="e.g. 0.0">
+        <span class="hint">Snowfall (SNF)</span>
+      </div>
+    </div>
+
+    <button onclick="predict()" id="btn">Predict</button>
+    <div class="loader" id="loader">⏳ Predicting...</div>
+
+    <div class="result" id="result">
+      <p class="result-text" id="result-text"></p>
+    </div>
+  </div>
+
+  <script>
+    async function predict() {
+      const ids = ['STA','Precip','MinTemp','MeanTemp','Snowfall','YR','MO','DA','PRCP','MAX','MIN','MEA','SNF'];
+      const features = ids.map(id => parseFloat(document.getElementById(id).value));
+
+      if (features.some(isNaN)) {
+        alert('Please fill in all fields before predicting.');
+        return;
+      }
+
+      const btn = document.getElementById('btn');
+      const loader = document.getElementById('loader');
+      const resultBox = document.getElementById('result');
+      const resultText = document.getElementById('result-text');
+
+      btn.disabled = true;
+      loader.classList.add('show');
+      resultBox.classList.remove('show', 'error');
+
+      try {
+        const res = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ features })
+        });
+        const data = await res.json();
+        resultText.textContent = `Your Max Temperature is ${data.prediction} °C`;
+        resultBox.classList.add('show');
+      } catch (err) {
+        resultText.textContent = 'Error connecting to server. Make sure Flask is running.';
+        resultBox.classList.add('show', 'error');
+      } finally {
+        btn.disabled = false;
+        loader.classList.remove('show');
+      }
+    }
+  </script>
+</body>
+</html>
